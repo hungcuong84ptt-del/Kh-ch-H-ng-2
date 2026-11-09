@@ -47,6 +47,8 @@ nav button{font-size:15px;padding:12px 4px}
 .wd{font-size:13.5px}
 .ev{font-size:15px}
 #rm .card{max-height:85vh;overflow-y:auto}
+a{color:var(--pr)}
+.chk{border-color:var(--wn)!important;background:rgba(224,176,74,.18)!important}
 </style>
 </head>
 <body>
@@ -56,7 +58,7 @@ nav button{font-size:15px;padding:12px 4px}
 <script>
 const KEY='kh_vay_v1';let L=[];
 try{L=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){L=[]}
-function mig(c){if(!c.v){['lv','amt'].forEach(k=>{if(c[k])c[k]=String(Math.round(+c[k]*1e6))});['p1','p2'].forEach(k=>{if(c[k]&&c[k].inc)c[k].inc=String(Math.round(+c[k].inc*1e6))});c.v=2}if(c.v<3){if(c.yr)c.yr=String(Math.round(+c.yr*12));c.v=3}return c}
+function mig(c){if(!c.v){['lv','amt'].forEach(k=>{if(c[k])c[k]=String(Math.round(+c[k]*1e6))});['p1','p2'].forEach(k=>{if(c[k]&&c[k].inc)c[k].inc=String(Math.round(+c[k].inc*1e6))});c.v=2}if(c.v<3){if(c.yr)c.yr=String(Math.round(+c.yr*12));c.v=3}if(c.v<4){if(!c.assets)c.assets=(c.land||c.lv||c.ld||c.ln)?[{land:c.land||'',lv:c.lv||'',ld:c.ld||'',ln:c.ln||'',area:'',lat:'',lng:'',link:'',plan:''}]:[];delete c.land;delete c.lv;delete c.ld;delete c.ln;c.v=4}return c}
 L=L.map(mig);
 function save(){try{localStorage.setItem(KEY,JSON.stringify(L))}catch(e){alert('Không lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn.')}}
 const $=s=>document.querySelector(s);
@@ -91,11 +93,12 @@ function dict(id,t){const S=SR();if(!S){alert('Trình duyệt chưa hỗ trợ g
  r.onresult=e=>{const s=e.results[0][0].transcript.trim();
   if(t==='m'){const v=pm(s);if(v){el.value=fmtn(v);mf(el)}else alert('Không nghe ra số tiền: “'+s+'”. Hãy nói kiểu “500 triệu” hoặc “1,2 tỷ”.')}
   else if(t==='n')el.value=s.replace(/\D/g,'');
+  else if(t==='d')el.value=s.replace(/,/g,'.').replace(/[^\d.]/g,'');
   else el.value=(el.value?el.value+' ':'')+s.replace(/\.$/,'')};
- r.onend=r.onerror=()=>{b.textContent='🎤'};try{r.start()}catch(x){}}
+ r.onend=r.onerror=()=>{b.textContent='🎤';el.dispatchEvent(new Event('input'))};try{r.start()}catch(x){}}
 /* Ô nhập */
 const mic=(id,t)=>`<button type="button" class="mc" id="${id}_m" onclick="dict('${id}','${t}')">🎤</button>`;
-const T=(id,l,v,t,ph,mode)=>`<label>${l}</label><div class="iw"><input id="${id}" value="${esc(v)}" placeholder="${esc(ph||'')}" ${t==='n'?`inputmode="${mode||'numeric'}"`:''}${mode==='list'?' list="rels"':''}>${mic(id,t||'t')}</div>`;
+const T=(id,l,v,t,ph,mode)=>`<label>${l}</label><div class="iw"><input id="${id}" value="${esc(v)}" placeholder="${esc(ph||'')}" ${(t==='n'||t==='d')?`inputmode="${mode||'numeric'}"`:''}${mode==='list'?' list="rels"':''}>${mic(id,t||'t')}</div>`;
 const M=(id,l,v)=>`<label>${l} (đồng)</label><div class="iw"><input id="${id}" inputmode="numeric" value="${fmtn(v)}" oninput="mf(this)" placeholder="Ví dụ 500.000.000">${mic(id,'m')}</div><div class="wd" id="${id}_w">${wd(v)}</div>`;
 let editId=null,ph={p1:'',p2:''};
 function go(v,id){['n1','n2','n3'].forEach((n,i)=>$('#'+n).className=['find','add','bk'][i]===v?'on':'');
@@ -106,22 +109,20 @@ function person(k,title,c){c=c||{};return `<div class="card"><h3>${title}</h3>
  ${T(k+'_name','Họ và tên',c.name)}${T(k+'_rel','Mối quan hệ',c.rel,'t',k==='p1'?'Chủ hồ sơ':'Vợ / chồng / con...','list')}
  ${T(k+'_addr','Địa chỉ, số nhà',c.addr,'t','Số nhà, thôn/xóm, xã, huyện')}${T(k+'_job','Công việc',c.job)}${T(k+'_dob','Ngày sinh',c.dob,'t','dd/mm/yyyy')}<label>Tình trạng hôn nhân</label><div class="iw"><input id="${k}_mar" list="mars" value="${esc(c.mar)}">${mic(k+'_mar','t')}</div>${T(k+'_sex','Giới tính',c.sex)}${T(k+'_cdate','Ngày cấp CCCD',c.cdate,'t','dd/mm/yyyy')}${T(k+'_cplace','Nơi cấp',c.cplace)}
  ${M(k+'_inc','Mức lương/thu nhập mỗi tháng',c.inc)}${T(k+'_tel','Số điện thoại',c.tel,'n','','tel')}${T(k+'_cccd','Số căn cước',c.cccd,'n')}</div>`}
-function formView(id){editId=id||null;const c=id?L.find(x=>x.id===id):{p1:{},p2:{}};
+function formView(id){editId=id||null;const c=id?L.find(x=>x.id===id):{p1:{},p2:{}};AS=(c.assets&&c.assets.length?JSON.parse(JSON.stringify(c.assets)):[{}]);
  ph.p1=c.p1&&c.p1.photo||'';ph.p2=c.p2&&c.p2.photo||'';$('#hd').textContent=id?'Sửa hồ sơ':'Nhập hồ sơ mới';
  $('#app').innerHTML=`<datalist id="rels"><option>Vợ</option><option>Chồng</option><option>Con</option><option>Bố/Mẹ</option><option>Anh/Chị/Em</option><option>Họ hàng</option><option>Bạn bè</option></datalist><datalist id="mars"><option>Độc thân</option><option>Đã lập gia đình</option><option>Ly hôn</option><option>Góa</option></datalist>
  <div id="ai"></div>${person('p1','👤 Người đứng vay',c.p1)}${person('p2','👥 Người cùng đứng vay',c.p2)}
- <div class="card"><h3>🏡 Tài sản đảm bảo (thửa đất)</h3>${T('land','Thông tin thửa (số thửa, tờ bản đồ, diện tích)',c.land)}
- ${M('lv','Giá trị thực tế',c.lv)}<label>Định giá ngày</label><input id="ld" type="date" value="${esc(c.ld)}">
- <label>Ghi chú định giá (đường, mặt tiền, pháp lý, quy hoạch...)</label><div class="iw"><textarea id="ln" rows="3">${esc(c.ln)}</textarea>${mic('ln','t')}</div></div>
+ <div id="assets"></div><button type="button" class="big g" onclick="addAsset()">➕ Thêm tài sản đảm bảo</button>
  <div class="card"><h3>💰 Mục đích vay</h3>${T('pur','Mục đích vay',c.pur,'t','Kinh doanh, chăn nuôi, sửa nhà...')}
  ${M('amt','Số tiền vay',c.amt)}<label>Thời hạn (tháng)</label><input id="yr" type="number" inputmode="numeric" placeholder="Ví dụ 60" value="${esc(c.yr)}">
  <label>Ghi chú thêm của cán bộ</label><div class="iw"><textarea id="note" rows="3">${esc(c.note)}</textarea>${mic('note','t')}</div></div>
- <button style="width:100%" onclick="saveForm()">💾 Lưu hồ sơ</button>`;initAI()}
+ <button style="width:100%" onclick="saveForm()">💾 Lưu hồ sơ</button>`;renderAssets();initAI()}
 function pick(k,inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,256/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*s;cv.height=im.height*s;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);ph[k]=cv.toDataURL('image/jpeg',.7);$('#av_'+k).innerHTML=`<img src="${ph[k]}">`};im.src=r.result};r.readAsDataURL(f)}
 const g=i=>($('#'+i).value||'').trim(),rw=i=>g(i).replace(/\./g,'');
 function pdata(k){return{name:g(k+'_name'),rel:g(k+'_rel'),addr:g(k+'_addr'),job:g(k+'_job'),inc:rw(k+'_inc'),tel:g(k+'_tel'),cccd:g(k+'_cccd'),dob:g(k+'_dob'),mar:g(k+'_mar'),sex:g(k+'_sex'),cdate:g(k+'_cdate'),cplace:g(k+'_cplace'),photo:ph[k]}}
-function saveForm(){const o={id:editId||String(Date.now()),v:3,p1:pdata('p1'),p2:pdata('p2'),land:g('land'),lv:rw('lv'),ld:g('ld'),ln:g('ln'),pur:g('pur'),amt:rw('amt'),yr:g('yr'),note:g('note'),upd:Date.now()};
+function saveForm(){const o={id:editId||String(Date.now()),v:4,p1:pdata('p1'),p2:pdata('p2'),assets:(collectAssets(),AS.filter(a=>Object.values(a).some(v=>v))),pur:g('pur'),amt:rw('amt'),yr:g('yr'),note:g('note'),upd:Date.now()};
  if(!o.p1.name){alert('Vui lòng nhập họ tên người đứng vay');return}
  L=editId?L.map(x=>x.id===editId?o:x):[o,...L];save();go('det',o.id)}
 /* Tìm kiếm */
@@ -130,7 +131,7 @@ function findView(){$('#hd').textContent='Hồ sơ khách hàng vay';
  const warn=L.length&&Date.now()-bk>6048e5?`<div class="ev warn" onclick="go('bk')">⚠️ ${bk?'Đã hơn 7 ngày chưa sao lưu.':'Bạn chưa sao lưu lần nào.'} Bấm để sao lưu hoặc phục hồi dữ liệu.</div>`:'';
  $('#app').innerHTML=`${warn}<div class="sb"><input id="q" type="search" placeholder="Tên, số nhà, nghề, mục đích, CCCD, SĐT..." oninput="renderList()"><button id="mic" onclick="voice()">🎤</button></div><div id="list"></div>`;renderList()}
 function renderList(){const q=nd(($('#q')||{value:''}).value).trim();
- const r=L.filter(c=>!q||q.split(/\s+/).every(w=>nd(JSON.stringify([c.p1,c.p2,c.land,c.pur,c.note,c.ln]).replace(/data:image[^"]*/g,'')).includes(w)));
+ const r=L.filter(c=>!q||q.split(/\s+/).every(w=>nd(JSON.stringify([c.p1,c.p2,c.assets,c.pur,c.note]).replace(/data:image[^"]*/g,'')).includes(w)));
  $('#list').innerHTML=r.length?r.map(c=>{const e=evalC(c),w=e.filter(x=>x.lv==='bad').length,y=e.filter(x=>x.lv==='warn').length;
  return `<div class="card it" onclick="go('det','${c.id}')"><div class="av">${c.p1.photo?`<img src="${c.p1.photo}">`:esc((c.p1.name||'?').trim().split(' ').pop()[0]||'?')}</div>
  <div class="t"><b>${esc(c.p1.name)}${c.p2.name?' + '+esc(c.p2.name):''}</b><small>${esc(c.p1.addr)||'Chưa có địa chỉ'}<br>${esc(c.pur)||'Chưa ghi mục đích'} · ${fm(c.amt)}</small></div>
@@ -141,18 +142,21 @@ function voice(){const S=SR();if(!S){alert('Trình duyệt chưa hỗ trợ gi�
  r.onend=r.onerror=()=>{const m=$('#mic');if(m)m.textContent='🎤'};try{r.start()}catch(e){}}
 /* Thẩm định */
 function evalC(c){const o=[],add=(lv,t)=>o.push({lv,t});
- const inc=(+c.p1.inc||0)+(+c.p2.inc||0),amt=+c.amt||0,lv=+c.lv||0,yr=+c.yr||0;
- if(!lv)add('bad','Chưa có giá trị thửa đất. Cần định giá trước khi đề xuất.');
- else{if(c.ld){const m=(Date.now()-new Date(c.ld))/2.63e9;
-   if(m>12)add('bad',`Định giá đã ${Math.floor(m)} tháng, quá cũ. Cần định giá lại theo giá thị trường hiện tại.`);
-   else if(m>6)add('warn',`Định giá đã ${Math.floor(m)} tháng. Nên cập nhật lại nếu giá khu vực biến động.`);
-   else add('ok',`Định giá còn mới (ngày ${fd(c.ld)}).`)}
-  else add('warn','Chưa ghi ngày định giá. Phải ghi rõ ngày/tháng/năm để có căn cứ.');
+ const inc=(+c.p1.inc||0)+(+c.p2.inc||0),amt=+c.amt||0,A=c.assets||[],lv=A.reduce((t,a)=>t+(+a.lv||0),0),yr=+c.yr||0;
+ if(!A.length||!lv)add('bad',A.length?'Chưa có giá trị thực tế của tài sản đảm bảo. Cần định giá trước khi đề xuất.':'Chưa có tài sản đảm bảo. Hãy thêm thông tin thửa đất.');
+ else{if(A.length>1)add('ok',`Có ${A.length} tài sản đảm bảo, tổng giá trị ${fm(lv)}.`);
   if(amt){const r=amt/lv*100;
    if(r>70)add('bad',`Số tiền vay/giá trị TSĐB = ${r.toFixed(0)}%. Cao, rủi ro khi xử lý tài sản. Nên giảm khoản vay hoặc bổ sung TSĐB.`);
-   else if(r>50)add('warn',`Vay/TSĐB = ${r.toFixed(0)}%. Chấp nhận được, cần đối chiếu tính thanh khoản của thửa đất.`);
+   else if(r>50)add('warn',`Vay/TSĐB = ${r.toFixed(0)}%. Chấp nhận được, cần đối chiếu tính thanh khoản của tài sản.`);
    else add('ok',`Vay/TSĐB = ${r.toFixed(0)}%. Biên an toàn tốt.`)}}
- if(!c.land)add('warn','Chưa ghi thông tin thửa đất (số thửa, tờ bản đồ, diện tích, loại đất).');
+ A.forEach((a,k)=>{const n=A.length>1?`Tài sản ${k+1}: `:'';
+  if(A.length>1&&!+a.lv)add('warn',n+'Chưa có giá trị thực tế.');
+  if(a.ld){const m=(Date.now()-new Date(a.ld))/2.63e9;if(m>12)add('bad',`${n}Định giá đã ${Math.floor(m)} tháng, quá cũ. Cần định giá lại theo giá thị trường hiện tại.`);else if(m>6)add('warn',`${n}Định giá đã ${Math.floor(m)} tháng. Nên cập nhật lại nếu giá khu vực biến động.`);else add('ok',`${n}Định giá còn mới (ngày ${fd(a.ld)}).`)}
+  else if(+a.lv)add('warn',n+'Chưa ghi ngày định giá. Phải ghi rõ ngày/tháng/năm để có căn cứ.');
+  if(!a.land)add('warn',n+'Chưa ghi thông tin thửa (số thửa, tờ bản đồ, loại đất).');
+  if(!(a.lat&&a.lng)&&!a.link)add('warn',n+'Chưa có vị trí (tọa độ hoặc link bản đồ). Khó kiểm tra thực địa và quy hoạch.');
+  if(+a.area&&+a.lv)add('ok',`${n}Đơn giá ước tính ${fm(a.lv/a.area)}/m². Đối chiếu với giá giao dịch khu vực.`);
+  if(/quy hoach|giai toa|hanh lang|lo gioi|treo/.test(nd(a.plan+' '+a.ln)))add('warn',n+'Ghi chú có nhắc quy hoạch/giải tỏa/hành lang. Cần xin xác nhận quy hoạch trước khi nhận tài sản.')});
  if(!inc)add('bad','Chưa có thu nhập. Không đánh giá được khả năng trả nợ.');
  else if(amt){const n=Math.max(1,yr||60),i=.11/12,p=amt*i/(1-Math.pow(1+i,-n)),d=p/inc*100;
   add(d>70?'bad':d>50?'warn':'ok',`Ước tính trả gốc + lãi ~${fm(p)}/tháng (lãi giả định 11%/năm, ${n} tháng) = ${d.toFixed(0)}% thu nhập.`+(d>50?' Nên kéo dài thời hạn, giảm số vay hoặc thêm nguồn trả nợ.':''))}
@@ -186,7 +190,7 @@ function detail(id){const c=L.find(x=>x.id===id);if(!c)return go('find');$('#hd'
  <div class="ev" style="border-color:var(--pr)"><b>Việc nên làm khi gặp lại khách:</b><br>• Đi thực địa: kiểm tra nơi ở, nơi làm việc/kinh doanh, hỏi hàng xóm.<br>• Tra CIC, nợ xấu, nợ ngân hàng khác của cả hai người.<br>• Kiểm tra sổ đỏ: chính chủ, tranh chấp, quy hoạch, đường vào, thanh khoản.<br>• Xác minh thu nhập bằng chứng từ thực tế rồi mới tin số khách khai.</div>
  <small style="color:var(--mu)">Gợi ý tự động để tham khảo, cần đối chiếu quy chế của đơn vị bạn.</small></div>
  ${P(c.p1,'👤 Người đứng vay')}${P(c.p2,'👥 Người cùng đứng vay')}
- <div class="card"><h3>🏡 Thửa đất</h3>${kv('Thông tin',esc(c.land))}${kv('Giá trị thực tế',mw(c.lv))}${kv('Định giá ngày',fd(c.ld))}${c.ln?`<p style="margin:8px 0 0">${esc(c.ln)}</p>`:''}</div>
+ ${(c.assets||[]).map((a,k)=>`<div class="card"><h3>🏡 Tài sản đảm bảo ${(c.assets.length>1?(k+1):'')}</h3>${kv('Thông tin',esc(a.land))}${kv('Diện tích',a.area?esc(a.area)+' m²':'')}${kv('Giá trị thực tế',mw(a.lv))}${kv('Định giá ngày',fd(a.ld))}${kv('Tọa độ',a.lat&&a.lng?esc(a.lat+', '+a.lng):'')}${kv('Quy hoạch/khu vực',esc(a.plan))}${a.ln?`<p style="margin:8px 0 0">${esc(a.ln)}</p>`:''}${mapLinks(a)}</div>`).join('')||'<div class="card"><h3>🏡 Tài sản đảm bảo</h3>Chưa có.</div>'}
  <div class="card"><h3>💰 Khoản vay</h3>${kv('Mục đích',esc(c.pur))}${kv('Số tiền',mw(c.amt))}${kv('Thời hạn',c.yr?c.yr+' tháng':'')}${c.note?`<p style="margin:8px 0 0">${esc(c.note)}</p>`:''}</div>
  <div class="row"><button class="g" onclick="go('add','${c.id}')">✏️ Sửa</button><button class="d" onclick="del('${c.id}')">🗑 Xóa</button></div>`}
 const AIP='Đây là ảnh chụp màn hình phần mềm ngân hàng chứa thông tin một khách hàng cá nhân. Trích xuất đúng những gì nhìn thấy trong ảnh, không đoán. Chỉ trả về JSON thuần với các khóa: name (tên khách hàng), addr (địa chỉ hiện tại; nếu trống dùng địa chỉ thường trú), job (nghề nghiệp), tel (số di động, chỉ chữ số), cccd (số CCCD/CMND hiện hành, chỉ chữ số), dob (ngày sinh dd/mm/yyyy), mar (tình trạng gia đình). Trường nào không thấy thì để chuỗi rỗng.';
@@ -201,44 +205,152 @@ async function readAI(inp){const fs=[...inp.files];if(!fs.length)return;const st
   st.textContent=ok.length?'✅ Đã điền: '+ok.join(', ')+'. Kiểm tra lại rồi bấm Lưu.':'Không đọc được thông tin. Hãy chụp rõ hơn.'}
  catch(e){st.textContent=e&&e.code==='not_granted'?'Bạn chưa cho phép dùng Claude để đọc ảnh.':'Chưa đọc được ảnh ('+(e&&e.code||'lỗi')+'). Thử lại.'}
  inp.value=''}
-function ocrCard(box){box.innerHTML=`<div class="card"><h3>📷 Tự điền từ ảnh CCCD (đọc ngay trên máy)</h3><p style="margin:0">Chọn ảnh mặt trước + mặt sau CCCD (chọn cả hai ảnh cùng lúc). Ứng dụng đọc chữ và điền vào form.</p><label>Điền vào</label><select id="ai_t"><option value="p1">Người đứng vay</option><option value="p2">Người cùng đứng vay</option></select><label>Chọn ảnh (chọn được nhiều ảnh)</label><input type="file" accept="image/*" multiple onchange="readOCR(this)"><div id="ai_s" class="wd"></div><small style="color:var(--mu)">Ảnh được xử lý ngay trên điện thoại, không gửi đi đâu. Lần đầu cần mạng để tải bộ đọc chữ tiếng Việt (khoảng 15 MB). Độ chính xác không bằng đọc bằng Claude, hãy kiểm tra lại từng ô, nhất là số CCCD và ngày sinh.</small></div>`}
+let AS=[];
+function mapLinks(a){const o=[],la=parseFloat(String(a.lat||'').replace(',','.')),lo=parseFloat(String(a.lng||'').replace(',','.'));
+ if(isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180)o.push(`<a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" rel="noopener">📍 Mở vị trí trên bản đồ</a>`,`<a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" rel="noopener">🧭 Chỉ đường đến tài sản</a>`);
+ if(/^https?:\/\//i.test(a.link||''))o.push(`<a href="${esc(a.link)}" target="_blank" rel="noopener">🗺 Mở bản đồ quy hoạch / VN2000</a>`);
+ return o.map(x=>`<div style="margin:8px 0">${x}</div>`).join('')}
+function assetCard(a,i){const p='a'+i+'_';return `<div class="card"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">🏡 Tài sản đảm bảo ${i+1}</h3>${AS.length>1?`<button type="button" class="d" style="flex:none;padding:6px 10px" onclick="delAsset(${i})">🗑 Xóa</button>`:''}</div>
+ <label>Ảnh bản đồ quy hoạch / VN2000 (tự điền tọa độ, diện tích, khu vực)</label><input type="file" accept="image/*" onchange="readAsset(${i},this)"><div class="wd" id="${p}s"></div>
+ ${T(p+'land','Thông tin thửa (số thửa, tờ bản đồ, loại đất)',a.land)}${T(p+'area','Diện tích (m²)',a.area,'d','','decimal')}${M(p+'lv','Giá trị thực tế',a.lv)}
+ <label>Định giá ngày</label><input id="${p}ld" type="date" value="${esc(a.ld)}">
+ <label>Ghi chú định giá (đường, mặt tiền, pháp lý, quy hoạch...)</label><div class="iw"><textarea id="${p}ln" rows="3">${esc(a.ln)}</textarea>${mic(p+'ln','t')}</div>
+ <div class="row"><div>${T(p+'lat','Vĩ độ',a.lat,'d','20.456865','decimal')}</div><div>${T(p+'lng','Kinh độ',a.lng,'d','106.333527','decimal')}</div></div>
+ ${T(p+'link','Link bản đồ quy hoạch / mã chia sẻ VN2000 (dán vào)',a.link)}${T(p+'plan','Quy hoạch / khu vực',a.plan)}<div id="${p}lk"></div></div>`}
+function collectAssets(){AS=AS.map((a,i)=>{const p='a'+i+'_',v=k=>$('#'+p+k)?($('#'+p+k).value||'').trim():(a[k]||'');return{land:v('land'),area:v('area'),lv:v('lv').replace(/\./g,''),ld:v('ld'),ln:v('ln'),lat:v('lat'),lng:v('lng'),link:v('link'),plan:v('plan')}})}
+function renderAssets(){const b=$('#assets');if(!b)return;b.innerHTML=AS.map(assetCard).join('');
+ AS.forEach((a,i)=>{const p='a'+i+'_';['lat','lng','link'].forEach(k=>$('#'+p+k).addEventListener('input',()=>lk(i)));lk(i)})}
+function lk(i){const p='a'+i+'_',e=$('#'+p+'lk');if(!e)return;e.innerHTML=mapLinks({lat:$('#'+p+'lat').value,lng:$('#'+p+'lng').value,link:$('#'+p+'link').value})}
+function addAsset(){collectAssets();AS.push({});renderAssets();const l=$('#a'+(AS.length-1)+'_land');if(l)l.scrollIntoView({block:'center'})}
+function delAsset(i){if(!confirm('Xóa tài sản này khỏi hồ sơ?'))return;collectAssets();AS.splice(i,1);if(!AS.length)AS=[{}];renderAssets()}
+const ASP='Đây là ảnh chụp màn hình bản đồ quy hoạch hoặc thông tin thửa đất. Trích đúng những gì thấy trong ảnh, không đoán. Chỉ trả về JSON thuần với các khóa: lat (vĩ độ, số thập phân), lng (kinh độ, số thập phân), area (diện tích thửa theo m², chỉ số), old_area (khu vực cũ), new_area (khu vực mới), land (số thửa, tờ bản đồ, loại đất nếu thấy), plan (loại quy hoạch nếu đọc được từ chú giải). Khóa nào không thấy thì để chuỗi rỗng.';
+async function readAsset(i,inp){const f=inp.files[0];if(!f)return;const st=$('#a'+i+'_s');let s=null;try{s=window.claude&&await claude.use('sample')}catch(e){}
+ try{let d={};
+  if(s){st.textContent='⏳ Đang đọc ảnh...';d=await s.json(ASP,{images:[await imgBlob(f)],cache:false})||{};const pl=[];if(d.old_area)pl.push('Khu vực cũ: '+d.old_area);if(d.new_area)pl.push('Khu vực mới: '+d.new_area);if(d.plan)pl.push(d.plan);d.plan=pl.join('; ')}
+  else if(window.ocrAsset)d=await ocrAsset(f,st);else throw new Error('none');
+  const lb={lat:'vĩ độ',lng:'kinh độ',area:'diện tích',plan:'khu vực',land:'thông tin thửa'},ok=[];
+  for(const k in lb){let v=String(d[k]||'').trim();if(k==='lat'||k==='lng'||k==='area')v=v.replace(',','.');const el=$('#a'+i+'_'+k);if(v&&el){el.value=v;el.classList.add('chk');el.addEventListener('input',()=>el.classList.remove('chk'),{once:true});ok.push(lb[k])}}
+  lk(i);st.textContent=ok.length?'✅ Đã điền: '+ok.join(', ')+'. Ô viền vàng cần kiểm tra lại.':'Không đọc được tọa độ hoặc diện tích trong ảnh.'}
+ catch(e){st.textContent=(e&&e.message==='net')?'Không tải được bộ đọc. Kiểm tra mạng rồi thử lại.':'Chưa đọc được ảnh này. Hãy chụp rõ phần Thông tin thửa.'}
+ inp.value=''}
+function ocrCard(box){box.innerHTML=`<div class="card"><h3>📷 Tự điền từ ảnh CCCD (đọc ngay trên máy)</h3><p style="margin:0">Chọn ảnh hoặc file PDF: mặt trước + mặt sau CCCD, hoặc bản in thông tin khách hàng từ phần mềm. Ứng dụng tự đọc, phân biệt từng loại chữ và điền vào form.</p><label>Điền vào</label><select id="ai_t"><option value="p1">Người đứng vay</option><option value="p2">Người cùng đứng vay</option></select><label>Chọn ảnh hoặc PDF (chọn được nhiều file)</label><input type="file" accept="image/*,application/pdf" multiple onchange="readOCR(this)"><div id="ai_s" class="wd"></div><div id="ai_raw"></div><small style="color:var(--mu)">Ảnh và PDF được xử lý ngay trên điện thoại, không gửi đi đâu. PDF có chữ chọn được sẽ đọc rất chính xác và nhanh. Ảnh hoặc PDF dạng ảnh quét cần mạng để tải bộ đọc chữ tiếng Việt lần đầu (khoảng 15 MB). Độ chính xác không bằng đọc bằng Claude, hãy kiểm tra lại từng ô, nhất là số CCCD và ngày sinh.</small></div>`}
 let _tj=null;
 function loadTJ(){if(window.Tesseract)return Promise.resolve();return _tj||(_tj=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{_tj=null;no(new Error('net'))};document.head.appendChild(s)}))}
-function parseID(txt){
+function ocrBlob(f){return new Promise((ok,no)=>{const r=new FileReader();r.onerror=no;r.onload=()=>{const im=new Image();im.onerror=no;im.onload=()=>{const m=Math.max(im.width,im.height),s=m<1800?Math.min(2,1800/m):Math.min(1,2200/m),cv=document.createElement('canvas');cv.width=Math.round(im.width*s);cv.height=Math.round(im.height*s);const x=cv.getContext('2d');x.drawImage(im,0,0,cv.width,cv.height);
+ try{const d=x.getImageData(0,0,cv.width,cv.height),p=d.data;for(let i=0;i<p.length;i+=4){let g=.299*p[i]+.587*p[i+1]+.114*p[i+2];g=(g-128)*1.4+128;g=g<0?0:g>255?255:g;p[i]=p[i+1]=p[i+2]=g}x.putImageData(d,0,0)}catch(e){}
+ cv.toBlob(b=>b?ok(b):no(),'image/png')};im.src=r.result};r.readAsDataURL(f)})}
+function cutLab(s){const t=String(s).normalize('NFC'),m=/(noi dang ky|khai sinh|place of|noi cap|co gia tri|valid|date of|ngay )/.exec(nd(t));return m?t.slice(0,m.index):t}
+function okPast(d,minAge){const m=String(d||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m||+m[2]<1||+m[2]>12||+m[1]<1||+m[1]>31||+m[3]<1920)return false;if(new Date(+m[3],+m[2]-1,+m[1])>new Date())return false;return !minAge||+m[3]<=new Date().getFullYear()-minAge}
+function cvBlob(cv){return new Promise((ok,no)=>{try{const x=cv.getContext('2d'),d=x.getImageData(0,0,cv.width,cv.height),p=d.data;for(let i=0;i<p.length;i+=4){let g=.299*p[i]+.587*p[i+1]+.114*p[i+2];g=(g-128)*1.4+128;g=g<0?0:g>255?255:g;p[i]=p[i+1]=p[i+2]=g}x.putImageData(d,0,0)}catch(e){}cv.toBlob(b=>b?ok(b):no(),'image/png')})}
+function bandsFrom(R,h){const gap=Math.max(Math.round(h*.03),30),B=[];let st=-1,pv=-1;for(let y=0;y<h;y++){if(R[y]>=4){if(st<0)st=pv=y;else if(y-pv>gap){B.push([st,pv]);st=y}pv=y}}if(st>=0)B.push([st,pv]);return B.filter(x=>x[1]-x[0]>=h*.03)}
+function cropBands(cv){try{const w=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data,W=cv.width,H=cv.height,R=new Array(H).fill(0);
+ for(let y=0;y<H;y+=3){let n=0;for(let q=0;q<W;q+=3){const i=(y*W+q)*4;if(w[i]+w[i+1]+w[i+2]<690)n++}R[y]=n}
+ const B=bandsFrom(R,H);if(!B.length||(B.length===1&&(B[0][1]-B[0][0])>H*.85))return[cv];
+ const out=[];
+ for(const[b0,e0]of B){const C=new Array(W).fill(0);for(let y=b0;y<=e0;y+=3)for(let q=0;q<W;q+=3){const i=(y*W+q)*4;if(w[i]+w[i+1]+w[i+2]<690)C[q]++}
+  let a=0,c=W-1;while(a<W&&C[a]<2)a++;while(c>a&&C[c]<2)c--;if(c<=a)continue;
+  const m=Math.round(Math.max(W,H)*.03);a=Math.max(0,a-m);c=Math.min(W-1,c+m);const t=Math.max(0,b0-m),e=Math.min(H-1,e0+m),cw=c-a+1,ch=e-t+1,s=Math.min(2.5,2400/Math.max(cw,ch)),o=document.createElement('canvas');
+  o.width=Math.round(cw*s);o.height=Math.round(ch*s);o.getContext('2d').drawImage(cv,a,t,cw,ch,0,0,o.width,o.height);out.push(o)}
+ return out.length?out:[cv]}catch(e){return[cv]}}
+function cleanAddr(s){const w=String(s).split(/\s+/).filter(x=>!/[=+\\<>«»|~^`@#$%*_{}\[\]]/.test(x)&&(x.length>1||/\d/.test(x)));while(w.length&&w[w.length-1].length<=2&&!/\d/.test(w[w.length-1])&&!/^[A-ZÀ-Ỵ][a-zà-ỹ]$/.test(w[w.length-1]))w.pop();let r=w.join(' ').replace(/(\s*,)+/g,',').replace(/,(?=\S)/g,', ').replace(/^[\s,.:;\-]+|[\s,.:;\-]+$/g,'');const l=(r.match(/[A-Za-zÀ-ỹ]/g)||[]).length;return l>=r.length*.45?r:''}
+function parseCard(txt){
+ txt=txt.replace(/(\d{2}\/)(\d)\s(\d)(\/\d{4})/g,'$1$2$3$4');
  const L=txt.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x.length>1),N=L.map(nd),o={};
  const dre=/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})/;
  const fd2=s=>{const m=String(s||'').match(dre);return m?m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3]:''};
  const find=re=>N.findIndex(x=>re.test(x));
  const rest=i=>{const p=L[i].indexOf(':');return p>=0?L[i].slice(p+1).trim():''};
- for(let i=0;i<L.length;i++){const m=L[i].replace(/[\s.]/g,'').match(/(?:^|\D)(\d{12})(?!\d)/);if(m&&/so|no/.test(N[i])){o.cccd=m[1];break}}
+ const STOP=/cong hoa|viet nam|doc lap|hanh phuc|can cuoc|cuoc cong dan|socialist|republic|independence|freedom|happiness|identity|citizen|bo cong an|cuc |canh sat|quan ly|surname|given name|middle name|full name|place of|date of|nationality|personal|ho,|ho va|so dinh|chu dem/;
+ const cleanName=s=>s.replace(/[^A-Za-zÀ-ỹ\s]/g,' ').replace(/\s+/g,' ').trim();
+ const upr=s=>{const l=[...s].filter(c=>c!==c.toUpperCase()||c!==c.toLowerCase());if(!l.length)return 0;return l.filter(c=>c===c.toUpperCase()).length/l.length};
+ const isName=(s,lo)=>{const v=cleanName(s);return v.split(' ').filter(w=>w.length>0).length>=2&&v.split(' ').every(w=>w.length>=2&&/[aeiouyAEIOUYÀ-ỹ]/.test(w))&&v.length>=6&&v.length<=40&&(lo||upr(v)>=.7)&&!STOP.test(nd(v))};
+ const title=v=>v.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+ for(let i=0;i<L.length;i++){const m=L[i].replace(/[\s.]/g,'').match(/(?:^|\D)(\d{12})(?!\d)/);if(m&&/so|no|dinh danh|identif/.test(N[i])){o.cccd=m[1];break}}
  if(!o.cccd){const m=txt.replace(/[ \t]/g,'').match(/(?:^|\D)(\d{12})(?!\d)/);if(m)o.cccd=m[1]}
- let i=find(/ho va ten|full name/);
- if(i>=0){let v=rest(i);if(v.length<3&&i+1<L.length)v=L[i+1];v=v.replace(/[^A-Za-zÀ-ỹ\s]/g,'').replace(/\s+/g,' ').trim();if(v.length>2)o.name=v.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase())}
- i=find(/ngay sinh|date of birth/);if(i>=0)o.dob=fd2(L[i])||fd2(L[i+1]);
- i=find(/co gia tri den|date of expiry|valid until/);const exp=i>=0?(fd2(L[i])||fd2(L[i+1])):'';
- i=find(/gioi tinh|sex/);
- if(i>=0){const cl=s=>(s||'').replace(/gioi tinh|sex/g,'').replace(/viet nam/g,'');let m=cl(N[i]).match(/\b(nam|nu)\b/);if(!m&&!/quoc tich|nationality/.test(N[i+1]||''))m=cl(N[i+1]).match(/\b(nam|nu)\b/);if(m)o.sex=m[1]==='nam'?'Nam':'Nữ'}
- i=find(/noi thuong tru|place of residence|noi cu tru/);
- if(i>=0){const a=[];if(rest(i).length>1)a.push(rest(i));
-  for(let j=i+1;j<Math.min(L.length,i+3);j++){if(/co gia tri|expiry|valid|dac diem|ngay|date/.test(N[j]))break;a.push(L[j])}
-  const s=a.join(', ').replace(/[|_]/g,'').replace(/\s+,/g,',').replace(/,\s*,/g,',').trim();if(s.length>4)o.addr=s}
+ let i=find(/ho va ten|ho,? chu dem|full name|surname|given name|ten khai sinh/);
+ if(i>=0){const r0=rest(i);if(isName(r0,1))o.name=title(cleanName(r0));else for(let j=i+1;j<Math.min(L.length,i+4);j++){if(isName(L[j],1)){o.name=title(cleanName(L[j]));break}}}
+ if(!o.name){const j=L.findIndex(isName);if(j>=0)o.name=title(cleanName(L[j]))}
  const ds=[...txt.matchAll(new RegExp(dre.source,'g'))].map(m=>fd2(m[0]));
- i=find(/ngay cap|date of issue|ngay, thang, nam|date, month, year/);
+ i=N.findIndex(x=>/nam sinh|date of birth|ngay sinh/.test(x)&&!/khai sinh|place of birth/.test(x));if(i>=0)o.dob=fd2(L[i])||fd2(L[i+1]);
+ i=find(/co gia tri|expiry|valid|het han/);const exp=i>=0?(fd2(L[i])||fd2(L[i+1])):'';
+  const Z=L.map(x=>x.replace(/\s/g,'').toUpperCase()),mz={};
+ for(const z of Z){let m;
+  if(!mz.cccd&&(m=z.match(/ID[A-Z]?NM(\d{10})(\d{12})/)))mz.cccd=m[2];
+  if(!mz.dob&&(m=z.match(/(\d{2})(\d{2})(\d{2})\d([MF])(\d{6})\d?(?:VNM|<)/))){const yy=+m[1];if(+m[2]>=1&&+m[2]<=12&&+m[3]>=1&&+m[3]<=31){mz.dob=m[3]+'/'+m[2]+'/'+((yy<=new Date().getFullYear()%100?2000:1900)+yy);mz.sex=m[4]==='M'?'Nam':'Nữ'}}
+  if(!mz.name&&!/^ID/.test(z)&&/^[A-Z]{1,15}<<[A-Z<]{3,}/.test(z)){const p=z.split('<<');mz.name=(p[0]+' '+p[1].replace(/</g,' ')).replace(/\s+/g,' ').trim()}}
+ if(!o.cccd&&mz.cccd)o.cccd=mz.cccd;
+ let ny=0,ns='';if(o.cccd&&/^\d{12}$/.test(o.cccd)){const g=+o.cccd[3];ny=1900+100*Math.floor(g/2)+(+o.cccd.slice(4,6));ns=g%2===0?'Nam':'Nữ'}
+ const okY=d=>d&&okPast(d,14)&&(!ny||+d.slice(6)===ny);
+ o.dob=[o.dob,...ds,mz.dob].find(okY)||'';
+ i=find(/gioi tinh|sex/);
+ if(i>=0){const cl=s=>(s||'').replace(/gioi tinh|sex/g,'').replace(/viet nam/g,'');let m=cl(N[i]).match(/\b(nam|nu|male|female)\b/);if(!m&&!/quoc tich|nationality/.test(N[i+1]||''))m=cl(N[i+1]).match(/\b(nam|nu|male|female)\b/);if(m)o.sex=/nam|male/.test(m[1])?'Nam':'Nữ'}
+ i=find(/thuong tru|residence|cu tru/);
+ if(i>=0){const a=[];if(rest(i).length>1)a.push(rest(i));
+  for(let j=i+1;j<Math.min(L.length,i+3);j++){if(/co gia tri|expiry|valid|dac diem|ngay|date|noi cap|quoc tich|noi dang ky|khai sinh|birth/.test(N[j]))break;a.push(L[j])}
+  const s=cleanAddr(cutLab(a.join(', ').replace(/[|_]/g,''))).replace(/\s+,/g,',').replace(/,\s*,/g,',').trim();if(s.length>4)o.addr=s}
+ i=find(/ngay cap|date of issue|nam cap/);
  let c=i>=0?(fd2(L[i])||fd2(L[i+1])):'';
- if(!c||c===o.dob)c=ds.find(d=>d&&d!==o.dob&&d!==exp)||'';
+ if(!c||c===o.dob||!okPast(c))c=ds.find(d=>d&&d!==o.dob&&d!==exp&&okPast(d))||'';
  if(c)o.cdate=c;
  const T2=N.join(' ');
  if(/bo cong an/.test(T2))o.cplace='Bộ Công An';else if(/quan ly hanh chinh|canh sat/.test(T2))o.cplace='Cục Cảnh sát QLHC về TTXH';
+ if(ns||mz.sex)o.sex=ns||mz.sex;
+ if(mz.name){const a=nd(o.name||'').replace(/\s/g,''),b=nd(mz.name).replace(/\s/g,'');if(a!==b)o.name=title(mz.name.toLowerCase())}
  return o}
-async function readOCR(inp){const fs=[...inp.files];if(!fs.length)return;const st=$('#ai_s'),k=$('#ai_t').value;
- try{st.textContent='⏳ Đang tải bộ đọc chữ (lần đầu mất 20–60 giây)...';await loadTJ();
-  const w=await Tesseract.createWorker('vie',1,{logger:m=>{if(m.status==='recognizing text')st.textContent='⏳ Đang đọc chữ '+Math.round(m.progress*100)+'%';else st.textContent='⏳ Đang chuẩn bị bộ đọc chữ...'}});
-  let txt='';for(const f of fs){const r=await w.recognize(await imgBlob(f));txt+='\n'+r.data.text}
-  await w.terminate();
-  const d=parseID(txt),lb={name:'tên',cccd:'CCCD',dob:'ngày sinh',sex:'giới tính',addr:'địa chỉ',cdate:'ngày cấp',cplace:'nơi cấp'},ok=[];
-  for(const x in lb){const el=$('#'+k+'_'+x);if(d[x]&&el){el.value=d[x];ok.push(lb[x])}}
-  st.textContent=ok.length?'✅ Đã điền: '+ok.join(', ')+'. Hãy kiểm tra kỹ từng ô rồi bấm Lưu.':'Không đọc được. Hãy chụp thẳng, đủ sáng, rõ chữ rồi thử lại.'}
- catch(e){st.textContent=(e&&e.message==='net')?'Không tải được bộ đọc chữ. Kiểm tra mạng rồi thử lại.':'Chưa đọc được ảnh. Thử chụp lại rõ hơn.'}
+const OLB={name:'tên',cccd:'CCCD',dob:'ngày sinh',sex:'giới tính',addr:'địa chỉ',cdate:'ngày cấp',cplace:'nơi cấp',tel:'SĐT',job:'nghề nghiệp',mar:'hôn nhân'};
+function fillFrom(txt){const k=$('#ai_t').value,d=parseID(txt),ok=[];
+ for(const x in OLB){const el=$('#'+k+'_'+x);if(d[x]&&el){el.value=d[x];el.classList.add('chk');el.addEventListener('input',()=>el.classList.remove('chk'),{once:true});ok.push(OLB[x])}}
+ $('#ai_s').textContent=ok.length?'✅ Đã điền: '+ok.join(', ')+'. Ô có viền vàng là chữ máy tự đọc, hãy kiểm tra và sửa rồi bấm Lưu.':'Không nhận ra thông tin nào trong ảnh. Hãy chụp thẳng, đủ sáng, rõ chữ rồi thử lại.';return ok.length}
+function showRaw(txt){$('#ai_raw').innerHTML=`<details style="margin:8px 0"><summary style="color:var(--pr)">Chữ máy đọc được (bấm để xem/sửa)</summary><textarea id="ocr_txt" rows="8"></textarea><button type="button" class="g" style="width:100%;margin-top:6px" onclick="fillFrom($('#ocr_txt').value)">Điền lại từ nội dung đã sửa</button></details>`;$('#ocr_txt').value=txt}
+const KV=[['name',/ten khach hang/],['addr',/dia chi hien tai|dia chi thuong tru/],['tel',/so di dong/],['job',/nghe nghiep/],['mar',/tinh trang gia dinh|tinh trang hon nhan/],['dob',/ngay sinh/],['sex',/gioi tinh/],['cccd',/so cccd(?: ht)?|so cmnd|so can cuoc/],['cdate',/ngay cap(?! ho khau)/],['cplace',/noi cap(?! ho khau)/]];
+const KD=[/ngay het han/,/noi sinh/,/so co dinh/,/email/,/ma so thue/,/so cmnd cu/,/dan toc/,/trinh do/,/so ho khau/,/noi cap ho khau/,/ngay cap ho khau/,/ma khach hang/,/ma khu vuc/,/fax/,/so tai khoan/,/mo tai ngan hang/,/loai tv/,/loai giay to/,/loai khach hang/];
+function kvParse(txt){const r={},DR=/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})/;
+ for(let l of txt.split(/\r?\n/)){l=l.normalize('NFC');const n=nd(l),p=[];
+  for(const [k,re] of KV){const m=re.exec(n);if(m)p.push({k,s:m.index,e:m.index+m[0].length})}
+  for(const re of KD){const m=re.exec(n);if(m)p.push({k:null,s:m.index,e:m.index+m[0].length})}
+  p.sort((a,b)=>a.s-b.s);
+  p.forEach((x,i)=>{if(!x.k||r[x.k])return;const end=i+1<p.length?p[i+1].s:l.length;const v=l.slice(x.e,end).replace(/^[\s:()*\[\]\/]+/,'').replace(/[\s:(*)]+$/,'').trim();if(v)r[x.k]=v})}
+ const o={};
+ for(const k in r){let v=r[k];
+  if(k==='dob'||k==='cdate'){const m=v.match(DR);if(m)o[k]=m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3]}
+  else if(k==='tel'){const d=v.replace(/\D/g,'');if(d.length>=9&&d.length<=11)o[k]=d}
+  else if(k==='cccd'){const m=v.replace(/\s/g,'').match(/\d{12}|\d{9}/);if(m)o[k]=m[0]}
+  else if(k==='sex'){const m=v.toLowerCase().replace(/viet nam/g,'').match(/\b(nam|nữ|nu)\b/);if(m)o[k]=m[1]==='nam'?'Nam':'Nữ'}
+  else if(k==='name'){v=v.replace(/[^A-Za-zÀ-ỹ\s]/g,'').replace(/\s+/g,' ').trim();if(v.length>2&&v.split(' ').every(w=>w.length>=2))o[k]=v===v.toUpperCase()?v.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()):v}
+  else if(v.length>1){if(k==='addr')v=cleanAddr(cutLab(v));if(v)o[k]=v}}
+ return o}
+function parseID(txt){return Object.assign({},parseCard(txt),kvParse(txt))}
+function parseAsset(t){const o={};
+ for(const m of t.matchAll(/(\d{1,2}[.,]\d{4,})\s*[,;]\s*(\d{2,3}[.,]\d{4,})/g)){const la=parseFloat(m[1].replace(',','.')),lo=parseFloat(m[2].replace(',','.'));if(la>=5&&la<=25&&lo>=100&&lo<=115){o.lat=String(la);o.lng=String(lo);break}}
+ const a=t.match(/di[eệ]n\s*t[ií]ch\s*[:：]?\s*(\d+(?:[.,]\d+)?)\s*m/i)||t.match(/(\d+[.,]\d+|\d+)\s*m\s*[²2]/);if(a)o.area=a[1].replace(',','.');
+ const nw=t.match(/khu\s*v[uự]c\s*m[oớ]i\s*[:：]?\s*(.+)/i),od=t.match(/khu\s*v[uự]c\s*c[uũ]\s*[:：]?\s*(.+)/i),p=[];
+ if(od)p.push('Khu vực cũ: '+od[1].trim());if(nw)p.push('Khu vực mới: '+nw[1].trim());if(p.length)o.plan=p.join('; ');return o}
+function imgOf(f){return new Promise((ok,no)=>{const r=new FileReader();r.onerror=no;r.onload=()=>{const im=new Image();im.onerror=no;im.onload=()=>ok(im);im.src=r.result};r.readAsDataURL(f)})}
+async function ocrAsset(f,st){await loadTJ();const im=await imgOf(f);
+ const w=await Tesseract.createWorker('vie',1,{logger:m=>{if(m.status==='recognizing text')st.textContent='⏳ Đang đọc chữ '+Math.round(m.progress*100)+'%';else st.textContent='⏳ Đang chuẩn bị bộ đọc chữ...'}});
+ let d={};try{for(const y0 of[.6,0]){const sy=Math.round(im.height*y0),sh=im.height-sy,s=Math.min(2,1600/im.width),cv=document.createElement('canvas');cv.width=Math.round(im.width*s);cv.height=Math.round(sh*s);cv.getContext('2d').drawImage(im,0,sy,im.width,sh,0,0,cv.width,cv.height);
+  await w.setParameters({tessedit_pageseg_mode:'6'});const r=await w.recognize(await cvBlob(cv));d=Object.assign({},parseAsset(r.data.text),d);if(d.lat&&d.area)break}}finally{await w.terminate()}
+ return d}
+let _pj=null;
+function loadPJ(){if(window.pdfjsLib)return Promise.resolve();return _pj||(_pj=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';ok()};s.onerror=()=>{_pj=null;no(new Error('net'))};document.head.appendChild(s)}))}
+async function pdfParts(f,st){await loadPJ();const doc=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,N=Math.min(doc.numPages,6);let txt='';const bl=[];
+ for(let n=1;n<=N;n++){st.textContent='⏳ Đang đọc PDF trang '+n+'/'+N+'...';const pg=await doc.getPage(n),tc=await pg.getTextContent(),rows=[];
+  tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const y=it.transform[5],x=it.transform[4];let r=rows.find(q=>Math.abs(q.y-y)<3);if(!r){r={y,a:[]};rows.push(r)}r.a.push({x,s:it.str})});
+  rows.sort((a,b)=>b.y-a.y);const t=rows.map(r=>r.a.sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ')).join('\n');
+  if(t.replace(/\s/g,'').length>40)txt+='\n'+t;
+  else{const v0=pg.getViewport({scale:1}),sc=Math.min(6,3200/Math.max(v0.width,v0.height)),vp=pg.getViewport({scale:sc}),cv=document.createElement('canvas');cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);await pg.render({canvasContext:cx,viewport:vp}).promise;for(const c of cropBands(cv))bl.push(await cvBlob(c))}}
+ return{txt,bl}}
+async function readOCR(inp){const fs=[...inp.files];if(!fs.length)return;const st=$('#ai_s');let txt='';
+ try{const bl=[];
+  for(const f of fs){if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){const p=await pdfParts(f,st);txt+='\n'+p.txt;bl.push(...p.bl)}else{st.textContent='⏳ Đang xử lý ảnh...';bl.push(await ocrBlob(f))}}
+  if(bl.length){st.textContent='⏳ Đang tải bộ đọc chữ (lần đầu mất 20–60 giây)...';await loadTJ();
+   const w=await Tesseract.createWorker('vie',1,{logger:m=>{if(m.status==='recognizing text')st.textContent='⏳ Đang đọc chữ '+Math.round(m.progress*100)+'%';else st.textContent='⏳ Đang chuẩn bị bộ đọc chữ...'}});
+   let t2='';await w.setParameters({tessedit_pageseg_mode:'6'});
+   for(const b of bl){t2+='\n'+(await w.recognize(b)).data.text}
+   if(Object.keys(parseID(txt+t2)).length<6){await w.setParameters({tessedit_pageseg_mode:'11'});for(const b of bl){t2+='\n'+(await w.recognize(b)).data.text}}
+   await w.terminate();txt+=t2}
+  txt=txt.trim();showRaw(txt);fillFrom(txt)}
+ catch(e){st.textContent=(e&&e.message==='net')?'Không tải được bộ đọc. Kiểm tra mạng rồi thử lại.':'Chưa đọc được file. Thử chụp lại rõ hơn hoặc dùng file khác.'}
  inp.value=''}
 async function hp(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('kh|'+s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return btoa(unescape(encodeURIComponent('kh|'+s)))}}
 const gp=()=>{try{return localStorage.getItem('kh_pw')||''}catch(e){return''}};
