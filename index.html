@@ -48,6 +48,7 @@ nav button{font-size:15px;padding:12px 4px}
 .ev{font-size:15px}
 #rm .card{max-height:85vh;overflow-y:auto}
 a{color:var(--pr)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:150}
 .chk{border-color:var(--wn)!important;background:rgba(224,176,74,.18)!important}
 </style>
 </head>
@@ -129,7 +130,7 @@ function saveForm(){const o={id:editId||String(Date.now()),v:4,p1:pdata('p1'),p2
 function findView(){$('#hd').textContent='Hồ sơ khách hàng vay';
  let bk=0;try{bk=+localStorage.getItem('kh_bk')||0}catch(e){}
  const warn=L.length&&Date.now()-bk>6048e5?`<div class="ev warn" onclick="go('bk')">⚠️ ${bk?'Đã hơn 7 ngày chưa sao lưu.':'Bạn chưa sao lưu lần nào.'} Bấm để sao lưu hoặc phục hồi dữ liệu.</div>`:'';
- $('#app').innerHTML=`${warn}<div class="sb"><input id="q" type="search" placeholder="Tên, số nhà, nghề, mục đích, CCCD, SĐT..." oninput="renderList()"><button id="mic" onclick="voice()">🎤</button></div><div id="list"></div>`;renderList()}
+ $('#app').innerHTML=`${warn}${gp()?'':'<div class="ev warn" onclick="setPw()">🔒 Chưa đặt mật khẩu mở ứng dụng. Bấm để đặt ngay.</div>'}<div class="sb"><input id="q" type="search" placeholder="Tên, số nhà, nghề, mục đích, CCCD, SĐT..." oninput="renderList()"><button id="mic" onclick="voice()">🎤</button></div><div id="list"></div>`;renderList()}
 function renderList(){const q=nd(($('#q')||{value:''}).value).trim();
  const r=L.filter(c=>!q||q.split(/\s+/).every(w=>nd(JSON.stringify([c.p1,c.p2,c.assets,c.pur,c.note]).replace(/data:image[^"]*/g,'')).includes(w)));
  $('#list').innerHTML=r.length?r.map(c=>{const e=evalC(c),w=e.filter(x=>x.lv==='bad').length,y=e.filter(x=>x.lv==='warn').length;
@@ -354,8 +355,24 @@ async function readOCR(inp){const fs=[...inp.files];if(!fs.length)return;const s
  inp.value=''}
 async function hp(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('kh|'+s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return btoa(unescape(encodeURIComponent('kh|'+s)))}}
 const gp=()=>{try{return localStorage.getItem('kh_pw')||''}catch(e){return''}};
-async function askPw(why){if(!gp())return true;const p=prompt(why+'\nNhập mật khẩu:');if(p===null)return false;if(await hp(p)===gp())return true;alert('Sai mật khẩu.');return false}
-async function setPw(){if(gp()&&!await askPw('Đổi mật khẩu.'))return;const p=prompt('Nhập mật khẩu mới (tối thiểu 4 ký tự).\nĐể trống = bỏ mật khẩu:');if(p===null)return;if(p&&p.length<4){alert('Mật khẩu quá ngắn.');return}try{if(p){localStorage.setItem('kh_pw',await hp(p));alert('Đã đặt mật khẩu.')}else{localStorage.removeItem('kh_pw');alert('Đã bỏ mật khẩu.')}}catch(e){}bkView()}
+function dlg(title,msg,ph,okTxt){return new Promise(res=>{const d=document.createElement('div');d.className='ov';
+ d.innerHTML=`<div class="card" style="max-width:380px;width:100%;margin:0"><h3>${title}</h3><p style="margin:0 0 10px">${msg}</p>${ph.map((p,i)=>`<input type="password" id="dg${i}" placeholder="${p}" autocomplete="off" style="margin-bottom:8px">`).join('')}<div class="row" style="margin-top:4px"><button type="button" class="g" id="dgc">Hủy</button><button type="button" id="dgo">${okTxt||'OK'}</button></div></div>`;
+ document.body.appendChild(d);const q=i=>d.querySelector(i);
+ q('#dgc').onclick=()=>{d.remove();res(null)};q('#dgo').onclick=()=>{const r=ph.map((_,i)=>q('#dg'+i).value);d.remove();res(r)};setTimeout(()=>{const f=q('#dg0');if(f)f.focus()},60)})}
+async function askPw(why){if(!gp())return true;const r=await dlg('🔒 Nhập mật khẩu',why,['Mật khẩu'],'Xác nhận');if(!r)return false;if(await hp(r[0])===gp())return true;alert('Sai mật khẩu.');return false}
+async function setPw(){if(gp()&&!await askPw('Nhập mật khẩu hiện tại để đổi hoặc bỏ mật khẩu.'))return;
+ const r=await dlg(gp()?'Đổi mật khẩu':'🔒 Đặt mật khẩu','Mật khẩu dùng để mở ứng dụng, xóa hồ sơ và thay thế dữ liệu. Tối thiểu 4 ký tự. Để trống cả hai ô để bỏ mật khẩu.',['Mật khẩu mới','Nhập lại mật khẩu'],'Lưu');
+ if(!r)return;if(r[0]!==r[1]){alert('Hai lần nhập không khớp.');return}if(r[0]&&r[0].length<4){alert('Mật khẩu quá ngắn (tối thiểu 4 ký tự).');return}
+ try{if(r[0]){localStorage.setItem('kh_pw',await hp(r[0]));alert('Đã đặt mật khẩu. Hãy nhớ kỹ mật khẩu này, quên là không khôi phục được.')}else{localStorage.removeItem('kh_pw');alert('Đã bỏ mật khẩu.')}}catch(e){alert('Không lưu được mật khẩu.')}
+ if(($('#hd').textContent||'').indexOf('Sao lưu')>=0)bkView();else findView()}
+let _hid=0,_fail=0,_until=0;
+function showLock(){if(!gp()||$('#lock'))return;const d=document.createElement('div');d.id='lock';d.style.cssText='position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
+ d.innerHTML=`<div style="max-width:340px;width:100%;text-align:center"><div style="font-size:48px">🔒</div><h2 style="margin:8px 0 4px">Hồ sơ khách hàng vay</h2><p style="color:var(--mu);margin:0 0 14px">Nhập mật khẩu để mở ứng dụng</p><input id="lk_p" type="password" placeholder="Mật khẩu" autocomplete="off" style="text-align:center;margin-bottom:10px"><button type="button" style="width:100%" id="lk_b">Mở khóa</button><div id="lk_e" style="color:var(--bad);min-height:22px;margin-top:10px"></div><small style="color:var(--mu)">Quên mật khẩu thì không khôi phục được. Khi đó cần xóa dữ liệu trang web rồi phục hồi từ file sao lưu.</small></div>`;
+ document.body.appendChild(d);
+ const open=async()=>{const e=$('#lk_e');if(Date.now()<_until){e.textContent='Thử lại sau '+Math.ceil((_until-Date.now())/1000)+' giây.';return}
+  if(await hp($('#lk_p').value)===gp()){_fail=0;d.remove()}else{_fail++;$('#lk_p').value='';if(_fail>=5){_until=Date.now()+30000;_fail=0;e.textContent='Sai 5 lần. Khóa 30 giây.'}else e.textContent='Sai mật khẩu.'}};
+ $('#lk_b').onclick=open;$('#lk_p').addEventListener('keydown',ev=>{if(ev.key==='Enter')open()});setTimeout(()=>{const f=$('#lk_p');if(f)f.focus()},120)}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)_hid=Date.now();else if(gp()&&_hid&&Date.now()-_hid>60000)showLock()});
 async function del(id){if(confirm('Xóa hồ sơ này?')&&await askPw('Xóa hồ sơ khách hàng.')){L=L.filter(x=>x.id!==id);save();go('find')}}
 /* Sao lưu & phục hồi */
 const bkJson=()=>JSON.stringify({app:'kh_vay',v:2,at:new Date().toISOString(),list:L});
@@ -370,7 +387,7 @@ function bkView(){$('#hd').textContent='Sao lưu & phục hồi';let bk=0;try{bk
  <div class="card"><h3>📥 Phục hồi</h3><label style="margin-top:0">Chọn file sao lưu (.json) đã tải từ Zalo</label><input type="file" accept=".json,application/json" onchange="restoreFile(this)">
  <label>Hoặc dán nội dung đã sao chép</label><textarea id="paste" rows="3" placeholder="Dán nội dung sao lưu vào đây"></textarea>
  <button style="width:100%;margin-top:8px" class="g" onclick="restoreText($('#paste').value)">Phục hồi từ nội dung dán</button></div>
- <div class="card"><h3>🔒 Mật khẩu bảo vệ</h3><p style="margin:0 0 10px">Mật khẩu: <b>${gp()?'Đã bật':'Chưa đặt'}</b>. Khi bật, phải nhập mật khẩu mới xóa được hồ sơ hoặc thay thế toàn bộ dữ liệu.</p><button class="big g" onclick="setPw()">${gp()?'Đổi / bỏ mật khẩu':'Đặt mật khẩu'}</button><small style="color:var(--mu)">Lưu ý: mật khẩu chỉ chặn việc xóa trong ứng dụng. Nếu xóa dữ liệu trang web từ cài đặt trình duyệt thì mật khẩu không chặn được, nên hãy sao lưu thường xuyên.</small></div><div id="bkmsg"></div>`}
+ <div class="card"><h3>🔒 Mật khẩu bảo vệ</h3><p style="margin:0 0 10px">Mật khẩu: <b>${gp()?'Đã bật':'Chưa đặt'}</b>. Khi bật, ứng dụng yêu cầu mật khẩu mỗi lần mở (và khi quay lại sau hơn 1 phút), khi xóa hồ sơ, hoặc khi thay thế toàn bộ dữ liệu.</p><button class="big g" onclick="setPw()">${gp()?'Đổi / bỏ mật khẩu':'Đặt mật khẩu'}</button><small style="color:var(--mu)">Lưu ý: mật khẩu chỉ chặn việc xóa trong ứng dụng. Nếu xóa dữ liệu trang web từ cài đặt trình duyệt thì mật khẩu không chặn được, nên hãy sao lưu thường xuyên.</small></div><div id="bkmsg"></div>`}
 const msg=t=>{const m=$('#bkmsg');if(m)m.innerHTML=`<div class="ev ok">${t}</div>`};
 async function saveBk(after){try{const d=window.claude&&await claude.use('downloads');if(!d){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkJson()],{type:'application/json'}));a.download=bkName();document.body.appendChild(a);a.click();a.remove();mark();msg('Đã lưu file vào máy (thư mục Tải xuống). Mở Zalo, chọn “Cloud của tôi” rồi đính kèm file này để gửi.');return true}
   await d.save({filename:bkName(),data:bkJson()});mark();msg('Đã lưu file. Mở Zalo, chọn “Cloud của tôi” hoặc người nhận, bấm đính kèm file vừa lưu để gửi.');bkView2();return true}catch(e){if(!e||e.code!=='declined')alert('Chưa lưu được file ('+(e&&e.code||'lỗi')+'). Hãy thử “Sao chép nội dung”.');return false}}
@@ -388,14 +405,14 @@ async function restoreText(t){let d;try{d=JSON.parse(String(t).trim())}catch(e){
   const m=new Map(L.map(x=>[x.id,x]));n.forEach(x=>{const o=m.get(x.id);if(!o||(x.upd||0)>=(o.upd||0))m.set(x.id,x)});L=[...m.values()].sort((a,b)=>(b.upd||0)-(a.upd||0));save();alert('Đã gộp. Hiện có '+L.length+' hồ sơ.');go('find')}
  else if(confirm('Thay thế TOÀN BỘ dữ liệu hiện tại bằng '+n.length+' hồ sơ trong file? Dữ liệu hiện tại sẽ mất.')&&await askPw('Thay thế toàn bộ dữ liệu.')){L=n;save();alert('Đã phục hồi '+L.length+' hồ sơ.');go('find')}}
 function remind(){let bk=0,sn=0;try{bk=+localStorage.getItem('kh_bk')||0;sn=+localStorage.getItem('kh_sn')||0}catch(e){}
- if(!L.length||$('#rm')||Date.now()-bk<6048e5||Date.now()-sn<864e5)return;
+ if(!L.length||$('#rm')||$('#lock')||Date.now()-bk<6048e5||Date.now()-sn<864e5)return;
  const d=document.createElement('div');d.id='rm';d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:99';
  d.innerHTML=`<div class="card" style="max-width:380px;width:100%;margin:0"><h3>⏰ Đến hạn sao lưu</h3><p style="margin:0 0 12px">${bk?'Đã hơn 7 ngày bạn chưa sao lưu dữ liệu.':'Bạn chưa sao lưu dữ liệu lần nào.'} Đang có ${L.length} hồ sơ trong máy, mất điện thoại là mất hết.</p><button class="big" onclick="rmGo('share')">📤 Sao lưu ngay (gửi Zalo)</button><button class="big g" onclick="rmGo('bk')">📥 Phục hồi dữ liệu</button><button class="big d" onclick="rmGo('later')">Nhắc lại sau 1 ngày</button></div>`;
  document.body.appendChild(d)}
 function rmGo(a){const d=$('#rm');if(d)d.remove();if(a==='later'){try{localStorage.setItem('kh_sn',Date.now())}catch(e){}}else if(a==='bk')go('bk');else{go('bk');shareBk()}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)remind()});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-go('find');setTimeout(remind,600);
+showLock();go('find');setTimeout(remind,600);
 </script>
 </body>
 </html>
