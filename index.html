@@ -49,6 +49,7 @@ nav button{font-size:15px;padding:12px 4px}
 #rm .card{max-height:85vh;overflow-y:auto}
 a{color:var(--pr)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:150}
+.bad{border-color:var(--bad)!important}
 .chk{border-color:var(--wn)!important;background:rgba(224,176,74,.18)!important}
 </style>
 </head>
@@ -92,6 +93,7 @@ function SR(){return window.SpeechRecognition||window.webkitSpeechRecognition}
 function dict(id,t){const S=SR();if(!S){alert('Trình duyệt chưa hỗ trợ giọng nói. Hãy dùng Chrome (Android) hoặc Safari (iPhone) và cho phép micro.');return}
  const b=$('#'+id+'_m'),el=$('#'+id),r=new S();r.lang='vi-VN';r.interimResults=false;b.textContent='🔴';
  r.onresult=e=>{const s=e.results[0][0].transcript.trim();
+  if(/_(dob|cdate)$/.test(id)){const m=s.match(/(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})/);if(m){el.value=m[1].padStart(2,'0')+m[2].padStart(2,'0')+m[3];dIn(el);dFix(el)}else alert('Không nghe ra ngày. Hãy nói kiểu “7 tháng 11 năm 2000”.');return}
   if(t==='m'){const v=pm(s);if(v){el.value=fmtn(v);mf(el)}else alert('Không nghe ra số tiền: “'+s+'”. Hãy nói kiểu “500 triệu” hoặc “1,2 tỷ”.')}
   else if(t==='n')el.value=s.replace(/\D/g,'');
   else if(t==='d')el.value=s.replace(/,/g,'.').replace(/[^\d.]/g,'');
@@ -118,12 +120,13 @@ function formView(id){editId=id||null;const c=id?L.find(x=>x.id===id):{p1:{},p2:
  <div class="card"><h3>💰 Mục đích vay</h3>${T('pur','Mục đích vay',c.pur,'t','Kinh doanh, chăn nuôi, sửa nhà...')}
  ${M('amt','Số tiền vay',c.amt)}<label>Thời hạn (tháng)</label><input id="yr" type="number" inputmode="numeric" placeholder="Ví dụ 60" value="${esc(c.yr)}">
  <label>Ghi chú thêm của cán bộ</label><div class="iw"><textarea id="note" rows="3">${esc(c.note)}</textarea>${mic('note','t')}</div></div>
- <button style="width:100%" onclick="saveForm()">💾 Lưu hồ sơ</button>`;renderAssets();initAI()}
+ <button style="width:100%" onclick="saveForm()">💾 Lưu hồ sơ</button>`;renderAssets();markDates();initAI()}
 function pick(k,inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,256/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*s;cv.height=im.height*s;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);ph[k]=cv.toDataURL('image/jpeg',.7);$('#av_'+k).innerHTML=`<img src="${ph[k]}">`};im.src=r.result};r.readAsDataURL(f)}
 const g=i=>($('#'+i).value||'').trim(),rw=i=>g(i).replace(/\./g,'');
 function pdata(k){return{name:g(k+'_name'),rel:g(k+'_rel'),addr:g(k+'_addr'),job:g(k+'_job'),inc:rw(k+'_inc'),tel:g(k+'_tel'),cccd:g(k+'_cccd'),dob:g(k+'_dob'),mar:g(k+'_mar'),sex:g(k+'_sex'),cdate:g(k+'_cdate'),cplace:g(k+'_cplace'),photo:ph[k]}}
-function saveForm(){const o={id:editId||String(Date.now()),v:4,p1:pdata('p1'),p2:pdata('p2'),assets:(collectAssets(),AS.filter(a=>Object.values(a).some(v=>v))),pur:g('pur'),amt:rw('amt'),yr:g('yr'),note:g('note'),upd:Date.now()};
+function saveForm(){document.querySelectorAll('[data-date]').forEach(dFix);if(document.querySelector('[data-date].bad')){alert('Có ô ngày chưa hợp lệ (viền đỏ). Hãy sửa lại rồi lưu.');return}
+ const o={id:editId||String(Date.now()),v:4,p1:pdata('p1'),p2:pdata('p2'),assets:(collectAssets(),AS.filter(a=>Object.values(a).some(v=>v))),pur:g('pur'),amt:rw('amt'),yr:g('yr'),note:g('note'),upd:Date.now()};
  if(!o.p1.name){alert('Vui lòng nhập họ tên người đứng vay');return}
  L=editId?L.map(x=>x.id===editId?o:x):[o,...L];save();go('det',o.id)}
 /* Tìm kiếm */
@@ -206,6 +209,23 @@ async function readAI(inp){const fs=[...inp.files];if(!fs.length)return;const st
   st.textContent=ok.length?'✅ Đã điền: '+ok.join(', ')+'. Kiểm tra lại rồi bấm Lưu.':'Không đọc được thông tin. Hãy chụp rõ hơn.'}
  catch(e){st.textContent=e&&e.code==='not_granted'?'Bạn chưa cho phép dùng Claude để đọc ảnh.':'Chưa đọc được ảnh ('+(e&&e.code||'lỗi')+'). Thử lại.'}
  inp.value=''}
+function dDigits(raw){const g=String(raw).split(/\D+/);return g.map((x,i)=>(i<2&&x.length===1&&i<g.length-1)?'0'+x:x).join('').slice(0,8)}
+function dFmt(d){let o=d.slice(0,2);if(d.length>2)o+='/'+d.slice(2,4);if(d.length>4)o+='/'+d.slice(4);return o}
+function dFinal(d,mode){d=String(d);const Y=new Date().getFullYear(),y0=Y%100;if(!d)return{txt:'',bad:false};
+ if(d.length===3)d=d.slice(0,2)+'0'+d[2];
+ if(d.length===4)d+=Y;else if(d.length===6){const yy=+d.slice(4);d=d.slice(0,4)+((mode==='dob'&&yy>y0?1900:2000)+yy)}
+ if(d.length!==8)return{txt:dFmt(d),bad:true};
+ const dd=+d.slice(0,2),mm=+d.slice(2,4),yy=+d.slice(4),dt=new Date(yy,mm-1,dd);
+ return{txt:dFmt(d),bad:!(yy>=1900&&yy<=2100&&mm>=1&&mm<=12&&dd>=1&&dt.getMonth()===mm-1&&dt.getDate()===dd&&dt<=new Date())}}
+function dIn(el){el.value=dFmt(dDigits(el.value));el.classList.remove('bad');dMsg(el,'')}
+function dMsg(el,t){const k=el.id+'_dm';let m=document.getElementById(k);if(!t){if(m)m.remove();return}if(!m){m=document.createElement('div');m.id=k;m.className='wd';m.style.color='var(--bad)';const a=el.closest('.iw')||el;a.parentNode.insertBefore(m,a.nextSibling)}m.textContent=t}
+function dFix(el){const r=dFinal(dDigits(el.value),el.dataset.date);el.value=r.txt;el.classList.toggle('bad',r.bad);dMsg(el,r.bad?'Ngày chưa hợp lệ (sai ngày/tháng, chưa đủ số, hoặc ở tương lai). Gõ liền 8 số, ví dụ 13112026.':'')}
+function markDates(){document.querySelectorAll('[id$="_dob"],[id$="_cdate"],[id$="_ld"]').forEach(e=>{e.dataset.date=/_dob$/.test(e.id)?'dob':'past';e.setAttribute('inputmode','numeric');e.maxLength=10;e.placeholder='dd/mm/yyyy'})}
+document.addEventListener('input',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.date)dIn(t)});
+document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.date)dFix(t)});
+document.addEventListener('keydown',e=>{const t=e.target;if(e.key==='Enter'&&t&&t.dataset&&t.dataset.date)dFix(t)});
+const toVN=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v.split('-').reverse().join('/'):(v||'');
+const toISO=v=>{v=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;const m=v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?m[3]+'-'+m[2]+'-'+m[1]:''};
 let AS=[];
 function mapLinks(a){const o=[],la=parseFloat(String(a.lat||'').replace(',','.')),lo=parseFloat(String(a.lng||'').replace(',','.'));
  if(isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180)o.push(`<a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" rel="noopener">📍 Mở vị trí trên bản đồ</a>`,`<a href="https://www.google.com/maps/dir/?api=1&destination=${la},${lo}" target="_blank" rel="noopener">🧭 Chỉ đường đến tài sản</a>`);
@@ -214,13 +234,13 @@ function mapLinks(a){const o=[],la=parseFloat(String(a.lat||'').replace(',','.')
 function assetCard(a,i){const p='a'+i+'_';return `<div class="card"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">🏡 Tài sản đảm bảo ${i+1}</h3>${AS.length>1?`<button type="button" class="d" style="flex:none;padding:6px 10px" onclick="delAsset(${i})">🗑 Xóa</button>`:''}</div>
  <label>Ảnh bản đồ quy hoạch / VN2000 (tự điền tọa độ, diện tích, khu vực)</label><input type="file" accept="image/*" onchange="readAsset(${i},this)"><div class="wd" id="${p}s"></div>
  ${T(p+'land','Thông tin thửa (số thửa, tờ bản đồ, loại đất)',a.land)}${T(p+'area','Diện tích (m²)',a.area,'d','','decimal')}${M(p+'lv','Giá trị thực tế',a.lv)}
- <label>Định giá ngày</label><input id="${p}ld" type="date" value="${esc(a.ld)}">
+ <label>Định giá ngày</label><input id="${p}ld" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" value="${esc(toVN(a.ld))}">
  <label>Ghi chú định giá (đường, mặt tiền, pháp lý, quy hoạch...)</label><div class="iw"><textarea id="${p}ln" rows="3">${esc(a.ln)}</textarea>${mic(p+'ln','t')}</div>
  <div class="row"><div>${T(p+'lat','Vĩ độ',a.lat,'d','20.456865','decimal')}</div><div>${T(p+'lng','Kinh độ',a.lng,'d','106.333527','decimal')}</div></div>
  ${T(p+'link','Link bản đồ quy hoạch / mã chia sẻ VN2000 (dán vào)',a.link)}${T(p+'plan','Quy hoạch / khu vực',a.plan)}<div id="${p}lk"></div></div>`}
-function collectAssets(){AS=AS.map((a,i)=>{const p='a'+i+'_',v=k=>$('#'+p+k)?($('#'+p+k).value||'').trim():(a[k]||'');return{land:v('land'),area:v('area'),lv:v('lv').replace(/\./g,''),ld:v('ld'),ln:v('ln'),lat:v('lat'),lng:v('lng'),link:v('link'),plan:v('plan')}})}
+function collectAssets(){AS=AS.map((a,i)=>{const p='a'+i+'_',v=k=>$('#'+p+k)?($('#'+p+k).value||'').trim():(a[k]||'');return{land:v('land'),area:v('area'),lv:v('lv').replace(/\./g,''),ld:toISO(v('ld')),ln:v('ln'),lat:v('lat'),lng:v('lng'),link:v('link'),plan:v('plan')}})}
 function renderAssets(){const b=$('#assets');if(!b)return;b.innerHTML=AS.map(assetCard).join('');
- AS.forEach((a,i)=>{const p='a'+i+'_';['lat','lng','link'].forEach(k=>$('#'+p+k).addEventListener('input',()=>lk(i)));lk(i)})}
+ AS.forEach((a,i)=>{const p='a'+i+'_';['lat','lng','link'].forEach(k=>$('#'+p+k).addEventListener('input',()=>lk(i)));lk(i)});markDates()}
 function lk(i){const p='a'+i+'_',e=$('#'+p+'lk');if(!e)return;e.innerHTML=mapLinks({lat:$('#'+p+'lat').value,lng:$('#'+p+'lng').value,link:$('#'+p+'link').value})}
 function addAsset(){collectAssets();AS.push({});renderAssets();const l=$('#a'+(AS.length-1)+'_land');if(l)l.scrollIntoView({block:'center'})}
 function delAsset(i){if(!confirm('Xóa tài sản này khỏi hồ sơ?'))return;collectAssets();AS.splice(i,1);if(!AS.length)AS=[{}];renderAssets()}
